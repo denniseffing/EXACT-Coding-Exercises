@@ -1,154 +1,151 @@
-# Human-in-the-Loop TDD Rules
+# Human-in-the-Loop (HITL)
 
-## Description
-These rules ensure the human stays engaged and can provide guidance at critical decision points during Test-Driven Development. The AI should pause and explicitly ask for user feedback in these specific situations.
+This file is the **single source of truth** for when the TDD workflow stops and
+asks the human for approval. It is referenced from `tdd.md`, `red.md`,
+`green.md`, `refactor.md`, `test-list.md`, and `tdd-execution-mode.md`. To
+change HITL behavior, edit only this file.
 
-## Rule 1: End-of-Phase Confirmation
+## Autonomy Level
 
-### When to Apply
-At the **end of every TDD phase** (Red, Green, or Refactor), before proceeding to the next phase or test.
+**Current setting:** `full-hitl`
 
-### What to Do
-1. **Stop after completing the current phase**
-2. **Summarize what was just completed in this phase**:
+To change behavior, edit the line above. Supported values:
 
-   **After Red Phase**:
-   - Which test was activated
-   - Prediction made and whether it was correct
-   - Type of failure achieved (compilation/runtime error)
+| Level | Stops after | Notes |
+|---|---|---|
+| `full-hitl` (default) | Test-List, Red, Refactor, on prediction failure | Green runs through without stop |
+| `refactor-only` | Refactor, on prediction failure | Lets test-list/red/green run autonomously, human reviews refactoring decisions only |
+| `red-only` | Red, on prediction failure | Use when you want to validate every test before any implementation |
+| `every-n-tests N` | After every N completed Red-Green-Refactor cycles (replace N with an integer) | Mid-ground: not every phase, but periodic checkpoints |
+| `task-end` | Only at the very end of the task | Prediction failures still reported, but do not stop |
+| `autonomous` | Never | Equivalent to the batch experiment mode; no human gates at all |
 
-   **After Green Phase**:
-   - Implementation approach taken (minimal code added)
-   - Confirmation that test now passes
-   - Any trade-offs or decisions made
+**Why these levels:** Different working modes need different oversight. Learning
+TDD benefits from full HITL (every phase visible). A senior developer who
+trusts the model wants `refactor-only` (the only place real design decisions
+happen). A long unattended run wants `task-end` or `autonomous`. The setting is
+a single configuration point so you do not need to edit five phase files when
+your situation changes.
 
-   **After Refactor Phase**:
-   - Refactorings attempted/completed:
-     - Naming changes made
-     - Mass calculations (before/after if applicable)
-     - Structural improvements
-     - Any refactoring opportunities that were rejected and why
+**Prediction failures are special:** in every level except `autonomous`, a
+failed Red-phase prediction (the "Guessing Game" — see "Prediction Failure
+Recovery" below) triggers an immediate stop regardless of phase. The reason: a
+wrong prediction means the model misunderstands the system; continuing without
+a human reset usually compounds the misunderstanding.
 
-3. **Explicitly ask for permission to continue**:
-   - **After Red**: "Red phase complete. Should I proceed to Green phase?"
-   - **After Green**: "Green phase complete. Should I proceed to Refactor phase?"
-   - **After Refactor**: "Refactor phase complete. Should I proceed to the next test?"
+## How the workflow consumes this file
 
-### Why This Matters
-- **Human maintains full control** - No phase proceeds without explicit approval
-- **Educational opportunity** - Human can guide each individual step
-- **Prevents over-implementation** - Each phase does only what's required
-- **Quality assurance** - Human reviews every phase before proceeding
-- **Fine-grained control** - Human can intervene at any point in the process
+Each phase file (`commands/test-list.md`, `commands/red.md`,
+`agents/refactor.md`) ends with an instruction to "apply HITL checkpoint per
+`@.claude/rules/human-in-the-loop.md`". `commands/green.md` does **not** —
+Green is deliberately exempt by default (see below).
 
-### Examples
+When you read this file as part of a phase, follow the matrix above:
+
+1. Look up the current Autonomy Level (top of this file).
+2. Check whether the phase you just completed is in the stop list for that level.
+3. If yes: produce the appropriate checkpoint summary (templates below) and
+   wait for explicit user approval before proceeding.
+4. If no: continue silently to the next phase.
+
+## Why Green is exempt by default
+
+In `full-hitl` the default stops after Test-List, Red, and Refactor, but **not
+after Green**. Two reasons:
+
+1. **Green is the most mechanical phase.** Once the Red prediction is right,
+   the minimal-implementation step is usually one obvious change. A human stop
+   here mostly produces "yes, continue" with no real review value.
+2. **Cycles double in length without it.** Adding a Green stop turns every test
+   into four human approvals (test-list once, then red/green/refactor per
+   cycle). That friction discourages running the workflow at all.
+
+You can still enable a Green checkpoint by switching to a custom level — but
+the default keeps the cycles tight.
+
+## Checkpoint templates
+
+### After Test-List
+
+```
+📋 Test List Phase Complete.
+
+Created [N] test cases (all `it.todo()`) covering [feature].
+Ordered simple → complex.
+
+Should I proceed to Red phase with the first test?
+```
+
+### After Red
+
 ```
 🔴 Red Phase Complete:
-**Test Activated**: "should return sum for two numbers"
-**Prediction**: Runtime assertion error (Expected: 3, Received: 1) ✅ Correct
-**Result**: Test fails as expected with assertion error
+**Test Activated**: "[test description]"
+**Compilation Prediction**: [reason] ✅ Correct / ❌ Incorrect
+**Runtime Prediction**: [reason] ✅ Correct / ❌ Incorrect
+**Result**: Test fails as expected with [error type]
 
-Red phase complete. Should I proceed to Green phase?
+Should I proceed to Green phase?
 ```
 
-```
-🟢 Green Phase Complete:
-**Implementation**: Added split/map/reduce logic for comma-separated numbers
-**Result**: All tests now pass
-**Approach**: Minimal implementation using built-in array methods
-
-Green phase complete. Should I proceed to Refactor phase?
-```
+### After Refactor
 
 ```
 🔄 Refactor Phase Complete:
-**Refactoring**:
-- Evaluated naming: kept `sumCommaSeparatedNumbers` (already clear)
-- Mass calculation: remains at 38 (no improvements found)
-- Considered helper functions but would increase complexity
+**Refactoring**: [improvements applied OR "none possible, because ..."]
+**Mass Change**: [before] → [after] (Δ ±N)
+**Tests**: All passing ✅
 
-Refactor phase complete. Should I proceed to the next test?
+Should I proceed to the next Red phase (next test)?
 ```
 
-## Rule 2: Failed Prediction Recovery
+### After Green (only if explicitly enabled)
 
-### When to Apply
-When the **"Guessing Game" prediction fails** - the actual test result differs significantly from what was predicted.
-
-### What to Do
-1. **Stop the TDD cycle immediately**
-2. **Explain the prediction failure**:
-   - What was predicted (error type, expected/actual values)
-   - What actually happened
-   - Why the prediction was wrong (if clear)
-3. **Assess the implications**:
-   - Does this indicate a misunderstanding of the code?
-   - Does this suggest the test or implementation has issues?
-   - Is this a learning opportunity about the system behavior?
-4. **Explicitly ask**:
-   - "My prediction was incorrect. Should I continue with the TDD process, or would you like me to investigate this discrepancy further?"
-   - "Do you want me to explain why I think my prediction failed?"
-   - "Should I adjust my understanding and continue, or take a different approach?"
-
-### Why This Matters
-- **Predictions build understanding** - Failures indicate gaps in comprehension
-- **Early error detection** - Unexpected behavior might reveal bugs or design issues
-- **Learning opportunity** - Human can provide insights about system behavior
-- **Maintains TDD discipline** - Ensures predictions remain meaningful and accurate
-
-### Example
 ```
-❌ Prediction Failed:
-- Predicted: Runtime assertion error (Expected: 3, Received: 1)
-- Actual: Runtime assertion error (Expected: 3, Received: NaN)
-- Issue: I incorrectly assumed parseInt("1,2") would return 1, but it actually returned NaN
+🟢 Green Phase Complete:
+**Implementation**: [brief description]
+**Result**: All tests now pass ([X] passing)
+**Approach**: [why this is minimal]
 
-This suggests I misunderstood how parseInt handles comma-separated strings. Should I continue with the TDD process, or would you like me to investigate this behavior further?
+Should I proceed to Refactor phase?
 ```
 
-## Integration with TDD Process
+## Prediction Failure Recovery
 
-### Modified TDD Process
-1. **Red Phase** (compilation/runtime error) → **🛑 HUMAN CHECKPOINT**
-2. **Green Phase** (minimal implementation) → **🛑 HUMAN CHECKPOINT**
-3. **Refactor Phase** (mandatory improvements) → **🛑 HUMAN CHECKPOINT**
-4. **Repeat** only with explicit human approval
+Trigger: the Red phase produces a different result than what was predicted in
+the "Guessing Game" block (compilation prediction or runtime prediction wrong).
 
-### Modified Guessing Game
-1. **Make explicit prediction**
-2. **Run test**
-3. **Compare prediction vs actual**
-4. **🛑 HUMAN CHECKPOINT**: If prediction failed significantly (immediate stop)
-5. **Continue current phase only after approval**
+In all levels except `autonomous`:
 
-### Core Principle: Never Proceed Without Permission
-- **Stop after every single phase** (Red, Green, Refactor)
-- **Implement only what the current phase requires**
-- **No lookahead or anticipatory coding**
-- **No additional features without explicit human approval**
-- **Each phase must be approved before continuing to next phase**
+1. **Stop immediately.** Do not proceed to Green.
+2. **Report the discrepancy**:
 
-## Guidelines
+   ```
+   ❌ Prediction Failed:
+   - Predicted: [what was expected]
+   - Actual:    [what happened]
+   - Likely cause: [if clear; otherwise "unclear, needs investigation"]
+   ```
 
-### When to ALWAYS Stop (Rule 1)
-- **After every TDD phase** - Red, Green, and Refactor (MANDATORY)
-- **Before proceeding to next phase** - Human must approve continuation
-- **Before writing any additional code** - Even if path seems obvious
+3. **Ask explicitly**:
 
-### When to IMMEDIATELY Stop (Rule 2)
-- **Significant prediction failures** - fundamental misunderstanding of behavior
-- **Any unexpected test results** - if actual differs meaningfully from predicted
-- **Compilation errors not anticipated** - suggests misunderstanding of codebase
+   > My prediction was wrong. Should I continue with the TDD process, or would
+   > you like me to investigate this discrepancy first?
 
-### Never Continue Without Approval
-- **No autonomous multi-phase execution** - Each phase requires explicit approval
-- **No anticipatory implementation** - Only implement what current phase demands
-- **No "obvious next steps"** - Human decides what constitutes next steps
-- **No batch processing** - Each phase must be individually approved
+4. **Wait for the human's decision** before continuing.
 
-## Benefits
-- **Maintains human agency** in the TDD process
-- **Prevents AI from making poor design decisions** in isolation
-- **Creates learning opportunities** for both human and AI
-- **Ensures code quality standards** are met
-- **Builds confidence** in the TDD process through transparency
+**Why this is a hard stop:** A wrong prediction means the model's mental model
+of the system disagrees with reality. Continuing without resolving that
+disagreement usually multiplies the problem (the Green phase will then be
+based on the same wrong assumption). A short pause here saves a much longer
+debugging round later.
+
+In `autonomous` mode: log the failure in the Red-phase report, then proceed.
+The wrong prediction is treated as data, not as a stop signal.
+
+## Switching levels mid-task
+
+If the human changes the Autonomy Level during a task (e.g. "switch to
+refactor-only for the rest"), apply the new level starting from the next phase
+boundary. Do not retroactively re-trigger or skip stops for phases already
+completed.

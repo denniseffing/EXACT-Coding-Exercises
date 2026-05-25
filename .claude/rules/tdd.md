@@ -1,146 +1,101 @@
-# Test-Driven Development (TDD) Rules
+# TDD Rules — Hybrid (v6, exact-coding baseline)
 
-## ⚠️ CRITICAL: Agent Usage is MANDATORY
+## ⚠️ CRITICAL: Skill + Subagent Usage is MANDATORY
 
-**YOU MUST USE THE SPECIALIZED TDD AGENTS FOR EVERY TDD TASK.**
+This workflow is a **hybrid** of two architectures:
 
-Do NOT perform TDD phases manually. The agents enforce discipline and prevent common mistakes.
+- **`/test-list`, `/red`, `/green`** run as **Skills in the main context** —
+  they share state, so the model keeps test list, last error, and current
+  implementation in working memory.
+- **Refactor** runs as a **Task subagent with isolated context** — the
+  refactor agent sees only the current source/tests, not the full red/green
+  history. Hypothesis: refactoring benefits most from a fresh perspective
+  free of implementation bias.
 
-### Before Starting Any TDD Work - Complete This Checklist:
+Do NOT perform TDD phases without invoking the appropriate skill or agent.
+If you write test code, implementation code, or refactorings directly in the
+main context instead of delegating, the workflow loses the architectural
+separation that makes the hybrid work.
+
+### Before Starting Any TDD Work — Complete This Checklist:
 
 - [ ] Have I been asked to implement something using TDD?
 - [ ] Am I about to write tests or implementation code?
-- [ ] **STOP** - Use the Task tool to launch the appropriate TDD agent
-- [ ] NEVER write tests or code directly - ALWAYS use agents
+- [ ] **STOP** — Use the Skill tool (test-list/red/green) or the Task tool (refactor)
+- [ ] NEVER write tests, code, or refactorings directly — ALWAYS delegate
 
-### Which Agent to Use:
+### Which Tool to Use:
 
-| Phase | Agent Name | Use Task Tool With |
-|-------|-----------|-------------------|
-| Test List | `test-list` | `subagent_type: "test-list"` |
-| Red Phase | `red` | `subagent_type: "red"` |
-| Green Phase | `green` | `subagent_type: "green"` |
-| Refactor Phase | `refactor` | `subagent_type: "refactor"` |
+| Phase | Mechanism | Invoke With |
+|-------|-----------|-------------|
+| Test List | **Skill** (main context) | `Skill({ skill: "test-list" })` |
+| Red Phase | **Skill** (main context) | `Skill({ skill: "red" })` |
+| Green Phase | **Skill** (main context) | `Skill({ skill: "green" })` |
+| Refactor Phase | **Task subagent** (isolated context) | `Task({ subagent_type: "refactor", prompt: ... })` |
 
-**If you find yourself writing test code or implementation code without launching an agent first, you are doing it WRONG.**
+**If you find yourself writing test code, implementation code, or a
+refactoring without invoking the right tool first, you are doing it WRONG.**
 
 ## Overview
 
-This project follows strict Test-Driven Development practices using the Red-Green-Refactor cycle with human-in-the-loop checkpoints.
+This project follows strict Test-Driven Development practices using the
+Red-Green-Refactor cycle. The workflow keeps red and green in a shared
+context so predictions, error messages, and minimal implementations stay
+coherent — and isolates refactoring so the model evaluates the resulting code
+on its own merits.
+
+This baseline supports **configurable human-in-the-loop checkpoints** between
+phases. See `@.claude/rules/human-in-the-loop.md` for the Autonomy Level
+setting and stop behavior.
 
 ## TDD Workflow
 
-**MANDATORY: Use the specialized TDD agents for each phase of the cycle:**
-
 ### 1. Test List Phase
-**🚨 LAUNCH AGENT**: Use `Task` tool with `subagent_type: "test-list"`
+**🚨 INVOKE SKILL**: `Skill({ skill: "test-list" })`
 
-**Required prompt context:**
-- Feature/function to implement
-- Target file paths (test file + implementation file)
-- Any constraints or requirements from the user
+Provide: feature, test file path, implementation file path, requirements.
 
-**Example Task call:**
-```
-Task({
-  subagent_type: "test-list",
-  prompt: `
-    Feature: String Calculator
-    Test file: src/calculator.spec.ts
-    Implementation file: src/calculator.ts
-    Requirements: Parse comma-separated numbers and return sum
-  `
-})
-```
+The skill creates a comprehensive test list using `it.todo()` covering every
+rule and example from the specification.
 
-The agent will create a comprehensive test list using `it.todo()` for BASE FUNCTIONALITY ONLY:
-- Focus on core behavior, not advanced features
-- Order tests from simple → complex
-- No implementation yet
-
-**DO NOT** write the test list yourself - let the agent do it.
+**DO NOT** write the test list yourself.
 
 ### 2. Red Phase
-**🚨 LAUNCH AGENT**: Use `Task` tool with `subagent_type: "red"`
+**🚨 INVOKE SKILL**: `Skill({ skill: "red" })`
 
-**Required prompt context:**
-- Test file path
-- Which `it.todo()` to activate (name or line number)
-- Current state (number of passing tests)
-- Implementation file path
+Provide: test file path, which `it.todo()` to activate, current passing-test
+count, implementation file path.
 
-**Example Task call:**
-```
-Task({
-  subagent_type: "red",
-  prompt: `
-    Test file: src/calculator.spec.ts
-    Activate test: "should return sum for two numbers" (line 12)
-    Current state: 2 tests passing
-    Implementation file: src/calculator.ts
-  `
-})
-```
+The skill activates exactly ONE test, makes explicit predictions, and
+verifies failure.
 
-The agent will activate exactly ONE test and make it fail:
-- Convert one `it.todo()` to executable test
-- Make explicit predictions (Guessing Game)
-- Verify compilation error, then runtime error
-- **Stop and wait for approval** before Green phase
-
-**DO NOT** write test code yourself - let the agent do it.
+**DO NOT** write test code yourself.
 
 ### 3. Green Phase
-**🚨 LAUNCH AGENT**: Use `Task` tool with `subagent_type: "green"`
+**🚨 INVOKE SKILL**: `Skill({ skill: "green" })`
 
-**Required prompt context:**
-- Test file path
-- Failing test name and expected behavior
-- Current error message
-- Implementation file path
+Provide: test file path, failing test name, current error, implementation
+file path.
 
-**Example Task call:**
-```
-Task({
-  subagent_type: "green",
-  prompt: `
-    Test file: src/calculator.spec.ts
-    Failing test: "should return sum for two numbers"
-    Expected: add("1,2") returns 3
-    Current error: Expected 3, Received undefined
-    Implementation file: src/calculator.ts
-  `
-})
-```
+The skill implements minimal code to make the test pass — hardcoded returns
+are fine for early tests.
 
-The agent will implement minimal code to make the test pass:
-- Use the simplest possible solution
-- Hardcoded returns are acceptable early on
-- No features for future tests
-- **Stop and wait for approval** before Refactor phase
-
-**DO NOT** write implementation code yourself - let the agent do it.
+**DO NOT** write implementation code yourself.
 
 ### 4. Refactor Phase
-**🚨 LAUNCH AGENT**: Use `Task` tool with `subagent_type: "refactor"`
+**🚨 LAUNCH AGENT**: `Task({ subagent_type: "refactor", prompt: ... })`
 
-**CRITICAL: Refactor MUST be a separate agent call.** The orchestrating agent must NEVER combine Green and Refactor into one Task. After Green phase completes, launch a NEW Task with `subagent_type: "refactor"` — do NOT ask the Green agent to refactor. Each phase = one dedicated agent invocation.
+**Required prompt context** (the subagent has no memory of red/green — give
+it everything it needs):
 
-**Required prompt context:**
-- Test file path
-- Implementation file path
-- Current number of passing tests
-- Recent changes made in Green phase
-
-**Example Task call:**
 ```
 Task({
   subagent_type: "refactor",
   prompt: `
-    Test file: src/calculator.spec.ts
-    Implementation file: src/calculator.ts
-    Passing tests: 3
-    Recent Green phase: Added split/map/reduce for comma parsing
+    Test file: src/<feature>.spec.ts
+    Implementation file: src/<feature>.ts
+    Passing tests: <count>
+    Recent Green phase: <one-line summary of what was just added>
 
     Refactor the implementation while keeping all tests green.
   `
@@ -148,109 +103,61 @@ Task({
 ```
 
 The agent will improve code while keeping tests green:
-- **MUST attempt at least one refactoring**
+- MUST attempt at least one refactoring (or document why none is possible)
 - Evaluate naming FIRST
 - Apply Four Rules of Simple Design (priority order)
-- Calculate APP (Absolute Priority Premise) mass
-- Document improvements or why none were possible
-- **Stop and wait for approval** before next test
+- Calculate APP (Absolute Priority Premise) mass before/after
 
-**DO NOT** refactor code yourself - let the agent do it.
+**DO NOT** refactor code yourself — let the agent do it. After it returns,
+read its summary, apply any test-runs needed for sanity, then consult
+HITL (next section) before proceeding to the next Red phase.
 
 ### 5. Repeat
-Return to step 2 (Red phase) for the next test in the list.
+Return to step 2 (Red phase) for the next test. **Invoke the `red` skill
+again.**
 
-**Launch the `red` agent again - DO NOT proceed manually.**
+## Human-in-the-Loop
 
-### ⚠️ Autonomous Mode Does NOT Change the Cycle
+Between phases, the workflow consults `@.claude/rules/human-in-the-loop.md`
+to decide whether to pause for human approval. The default Autonomy Level is
+`full-hitl`, which stops after Test-List, Red, and Refactor (not Green) and
+on prediction failures. Switch levels by editing the setting at the top of
+the HITL file — see that file for the full table.
 
-When the user asks to "work autonomously" or "do it on your own", this means:
-- **DO** run all phases without waiting for approval after each one
-- **DO NOT** skip any phase — especially not Refactor
-- **DO** call each phase agent separately: Task(red) → Task(green) → Task(refactor) — three distinct agent invocations per test
-- The cycle **Red → Green → Refactor** is non-negotiable, regardless of how autonomously you operate
-- "Autonomous" changes the **checkpoints**, not the **process**
+For unattended batch runs, set the level to `autonomous` to disable all
+stops.
 
 ## Core TDD Principles
 
 ### TDD Mindset
 TDD practices will feel counterintuitive:
-- **Hardcoded returns feel "too simple"** - This is correct!
-- **The urge to implement ahead is strong** - Resist this
-- **Minimal steps feel inefficient** - They actually accelerate development
-- **Predictions feel unnecessary** - They build crucial understanding
-- **Push through discomfort** - These feelings indicate you're following the discipline correctly
+- **Hardcoded returns feel "too simple"** — This is correct!
+- **The urge to implement ahead is strong** — Resist this
+- **Minimal steps feel inefficient** — They actually accelerate development
+- **Predictions feel unnecessary** — They build crucial understanding
 
 ### Common TDD Failure Modes
-Watch for these violations:
-- **🚨 NOT USING TDD AGENTS** - The most critical failure mode!
-- **🚨 SKIPPING REFACTOR PHASE** - "Autonomous" or "do it yourself" NEVER means skipping phases. The cycle is ALWAYS Red → Green → Refactor. Every. Single. Time. Even when the user says "work autonomously", that means "run all three phases without asking after each one" — NOT "skip Refactor and just do Red → Green."
-- **🚨 COMBINING PHASES** - Refactor phase requires its OWN Task call with `subagent_type: "refactor"`. Never combine Green+Refactor into one agent invocation. The orchestrator must call the Refactor agent explicitly after each Green phase.
-- Planning beyond base functionality
+- **🚨 NOT USING SKILLS / SUBAGENT** — The most critical failure mode
 - Multiple active tests at once
 - Implementing beyond what tests demand
 - Skipping predictions
 - Avoiding refactoring
-- Premature abstraction
-- Ignoring the uncomfortable
-- Writing code directly instead of launching agents
-
-### Why This Discipline Works
-- **Baby steps reveal simpler solutions** - Implementing only what tests demand often uncovers simpler approaches
-- **One-test-at-a-time prevents complexity** - Not thinking ahead eliminates unnecessary features
-- **Predictions build confidence** - Explicit expectations create deeper understanding
-- **Refactoring becomes natural** - Mandatory improvement attempts prevent technical debt
-- **The process fights harmful instincts** - Programming instincts often lead to premature optimization
-
-## Human-in-the-Loop
-
-See `@.claude/rules/human-in-the-loop.md` for detailed checkpoint requirements.
-
-**Key principle**: Stop after every phase (Red, Green, Refactor) and wait for explicit approval before continuing.
+- Refactoring in the main context instead of via the subagent
 
 ## Technical Setup
 
-See `@.claude/rules/tdd_with_ts_and_vitest.md` for TypeScript and Vitest configuration.
+See `@.claude/rules/tdd-with-ts-and-vitest.md` for TypeScript and Vitest
+configuration. See `@.claude/rules/tdd-execution-mode.md` for the execution
+model (skill/subagent sequence + optional done-marker).
 
-## Running Tests - CRITICAL
+## Running Tests
 
-**🚨 TDD agents MUST use npm scripts from `package.json`**
-
-### Correct Test Execution:
-- ✅ `npm test` - Run all tests
-- ✅ `npm run test:watch` - Run tests in watch mode
-
-### NEVER use:
-- ❌ `npx vitest` - Don't call vitest directly
-- ❌ `vitest --run SomeFile.spec.ts` - Don't call test files directly
-- ❌ Individual test file execution - Always use npm scripts
-
-**Why**: npm scripts provide a consistent interface. Direct vitest calls skip the centralized configuration.
-
-See `@.claude/rules/tdd_with_ts_and_vitest.md` for complete details.
+Run tests with `pnpm test`.
 
 ## Remember
 
-- **🚨 ALWAYS USE TDD AGENTS** - Never write tests or code directly during TDD
-- **Discomfort is a signal you're doing it right** - TDD should feel constraining at first
-- **Trust the process** - Simple steps compound into elegant solutions
-- **Discipline over instinct** - Follow the rules even when they feel wrong
-- **Agents enforce TDD discipline** - They prevent you from making common mistakes
-
-## Self-Check Before Proceeding
-
-Ask yourself before writing ANY code:
-
-1. ❓ **Am I doing TDD right now?**
-   - If YES → Have I launched the appropriate agent?
-   - If NO agent launched → **STOP and launch the agent first**
-
-2. ❓ **Am I about to write a test or implementation?**
-   - If YES → Which phase am I in? Have I launched that agent?
-   - If NO agent launched → **STOP and launch the agent first**
-
-3. ❓ **Did the user ask me to use TDD or am I implementing a feature?**
-   - If YES → **Launch test-list agent to start**
-   - If unsure → Ask the user
-
-**When in doubt, use the agents. They are there to help you follow the discipline correctly.**
+- **🚨 ALWAYS USE SKILLS** for test-list/red/green; **ALWAYS USE THE SUBAGENT** for refactor
+- Never write tests, implementation, or refactorings directly
+- Refactor subagent runs in an isolated context — give it everything it needs in the prompt
+- Trust the process — discomfort is a signal you're doing it right
+- Consult `@.claude/rules/human-in-the-loop.md` at every phase boundary
