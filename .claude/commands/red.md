@@ -110,7 +110,7 @@ it makes the prediction quality visible to you and any future reader.
 
 ### Step 8: Apply HITL Checkpoint
 
-Consult `@.claude/rules/human-in-the-loop.md`. If the current Autonomy Level
+Consult `@.claude/skills/tdd/human-in-the-loop.md`. If the current Autonomy Level
 includes a stop after Red phase, present the checkpoint template from that
 file and wait for explicit user approval before proceeding to Green. If the
 level does not stop after Red, proceed directly to Green phase.
@@ -140,7 +140,7 @@ If your prediction was wrong:
 ```
 
 Then apply the **Prediction Failure Recovery** procedure in
-`@.claude/rules/human-in-the-loop.md`. In every Autonomy Level except
+`@.claude/skills/tdd/human-in-the-loop.md`. In every Autonomy Level except
 `autonomous`, this is a hard stop — the human decides whether you continue
 or investigate first.
 

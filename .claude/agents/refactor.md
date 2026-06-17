@@ -215,7 +215,7 @@ Return the report to the requester.
 ### Step 8: Apply HITL Checkpoint
 
 After returning the report to the requester, the requesting context will
-consult `@.claude/rules/human-in-the-loop.md`. If the current Autonomy Level
+consult `@.claude/skills/tdd/human-in-the-loop.md`. If the current Autonomy Level
 includes a stop after Refactor (the default `full-hitl` does), the requester
 will present the checkpoint template and wait for explicit user approval
 before proceeding to the next Red phase. This step is the requester's

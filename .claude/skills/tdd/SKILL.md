@@ -1,3 +1,8 @@
+---
+name: tdd
+description: Strict Test-Driven Development workflow (Red-Green-Refactor) with configurable human-in-the-loop checkpoints. Invoke when the user explicitly asks to use TDD, do a TDD kata, or follow the Red-Green-Refactor discipline. Do NOT invoke for general coding tasks where the user has not asked for TDD.
+---
+
 # TDD Rules — Hybrid (v6, exact-coding baseline)
 
 ## ⚠️ CRITICAL: Skill + Subagent Usage is MANDATORY
@@ -45,7 +50,7 @@ coherent — and isolates refactoring so the model evaluates the resulting code
 on its own merits.
 
 This baseline supports **configurable human-in-the-loop checkpoints** between
-phases. See `@.claude/rules/human-in-the-loop.md` for the Autonomy Level
+phases. See `@.claude/skills/tdd/human-in-the-loop.md` for the Autonomy Level
 setting and stop behavior.
 
 ## TDD Workflow
@@ -118,7 +123,7 @@ again.**
 
 ## Human-in-the-Loop
 
-Between phases, the workflow consults `@.claude/rules/human-in-the-loop.md`
+Between phases, the workflow consults `@.claude/skills/tdd/human-in-the-loop.md`
 to decide whether to pause for human approval. The default Autonomy Level is
 `full-hitl`, which stops after Test-List, Red, and Refactor (not Green) and
 on prediction failures. Switch levels by editing the setting at the top of
@@ -146,8 +151,8 @@ TDD practices will feel counterintuitive:
 
 ## Technical Setup
 
-See `@.claude/rules/tdd-with-ts-and-vitest.md` for TypeScript and Vitest
-configuration. See `@.claude/rules/tdd-execution-mode.md` for the execution
+See `@.claude/skills/tdd/tdd-with-ts-and-vitest.md` for TypeScript and Vitest
+configuration. See `@.claude/skills/tdd/tdd-execution-mode.md` for the execution
 model (skill/subagent sequence + optional done-marker).
 
 ## Running Tests
@@ -160,4 +165,4 @@ Run tests with `pnpm test`.
 - Never write tests, implementation, or refactorings directly
 - Refactor subagent runs in an isolated context — give it everything it needs in the prompt
 - Trust the process — discomfort is a signal you're doing it right
-- Consult `@.claude/rules/human-in-the-loop.md` at every phase boundary
+- Consult `@.claude/skills/tdd/human-in-the-loop.md` at every phase boundary

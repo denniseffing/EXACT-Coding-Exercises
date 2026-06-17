@@ -20,7 +20,7 @@ The Refactor subagent is mandated to attempt at least one improvement per
 cycle, evaluates naming first (Beck's Four Rules of Simple Design), and uses
 the Absolute Priority Premise (APP) to measure mass before/after.
 
-Between phases, the workflow consults `.claude/rules/human-in-the-loop.md`
+Between phases, the workflow consults `.claude/skills/tdd/human-in-the-loop.md`
 to decide whether to pause for human approval. The default Autonomy Level
 (`full-hitl`) stops after Test-List, Red, and Refactor — and on prediction
 failures — but **not** after Green (Green is the most mechanical phase;
@@ -83,11 +83,11 @@ This export changes it to:
 - **Green skipped by default**: keeps cycles tight; can be re-enabled by
   switching to a custom level.
 - **Autonomy Level as a single setting**: one line at the top of
-  `.claude/rules/human-in-the-loop.md` controls the whole workflow. Choices
+  `.claude/skills/tdd/human-in-the-loop.md` controls the whole workflow. Choices
   include `full-hitl`, `refactor-only`, `red-only`, `every-n-tests N`,
   `task-end`, and `autonomous`.
 
-The HITL logic lives **only** in `.claude/rules/human-in-the-loop.md`. Phase
+The HITL logic lives **only** in `.claude/skills/tdd/human-in-the-loop.md`. Phase
 files reference it but do not embed stop logic, so you can swap the HITL
 file out without touching the workflow files.
 
@@ -95,12 +95,15 @@ file out without touching the workflow files.
 
 1. Copy the `.claude/` directory into your project root.
 2. Ensure the project has TypeScript, Vitest, and pnpm set up (see
-   `.claude/rules/tdd-with-ts-and-vitest.md`).
+   `.claude/skills/tdd/tdd-with-ts-and-vitest.md`).
 3. To use a different Autonomy Level, edit the first non-comment line of
-   `.claude/rules/human-in-the-loop.md` under "Autonomy Level".
-4. Start a TDD task by asking Claude to implement a feature using TDD —
-   `.claude/rules/tdd.md` is loaded automatically and instructs Claude to
-   invoke the skills.
+   `.claude/skills/tdd/human-in-the-loop.md` under "Autonomy Level".
+4. Start a TDD task by invoking the skill explicitly — either with `/tdd`
+   or by asking Claude to use the TDD skill for a feature. The skill is
+   **opt-in**: it is no longer auto-loaded as a project instruction, so TDD
+   is not the default for every interaction. Once invoked, `SKILL.md`
+   directs Claude to the `/test-list`, `/red`, `/green` skills and the
+   `refactor` subagent.
 
 ## File layout
 
@@ -115,11 +118,12 @@ file out without touching the workflow files.
 │   ├── test-list.md                    /test-list skill
 │   ├── red.md                          /red skill
 │   └── green.md                        /green skill
-└── rules/
-    ├── tdd.md                          TDD workflow rules (top-level instructions)
-    ├── tdd-execution-mode.md           Skill/subagent sequence; optional done marker
-    ├── tdd-with-ts-and-vitest.md       Tech-stack conventions
-    └── human-in-the-loop.md            ★ Single source of truth for HITL stops
+└── skills/
+    └── tdd/                            Opt-in TDD skill (invoke with /tdd)
+        ├── SKILL.md                    Skill entry — TDD workflow rules
+        ├── tdd-execution-mode.md       Skill/subagent sequence; optional done marker
+        ├── tdd-with-ts-and-vitest.md   Tech-stack conventions
+        └── human-in-the-loop.md        ★ Single source of truth for HITL stops
 ```
 
 README.md and VERSION live **inside** `.claude/` on purpose: when you copy

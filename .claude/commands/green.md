@@ -144,4 +144,4 @@ After completing Green phase, proceed directly to Refactor phase:
 > **HITL note:** Green has no human checkpoint by default — the default
 > Autonomy Level (`full-hitl`) skips it because Green is the most mechanical
 > phase and stops here mostly produce "yes, continue" with no review value.
-> To enable a Green checkpoint, see `@.claude/rules/human-in-the-loop.md`.
+> To enable a Green checkpoint, see `@.claude/skills/tdd/human-in-the-loop.md`.

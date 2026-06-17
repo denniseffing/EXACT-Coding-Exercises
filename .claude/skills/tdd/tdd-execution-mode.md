@@ -3,7 +3,7 @@
 This workflow runs the TDD cycle as a sequence of Skill invocations
 (`/test-list`, `/red`, `/green`) and one Task subagent (`refactor`). Whether
 the cycle pauses for human approval between phases is controlled by
-`@.claude/rules/human-in-the-loop.md` (the Autonomy Level setting at the top
+`@.claude/skills/tdd/human-in-the-loop.md` (the Autonomy Level setting at the top
 of that file).
 
 ## Workflow Sequence
@@ -16,7 +16,7 @@ of that file).
      (isolated context)
 3. **Continue** until all tests are implemented
 4. At each phase boundary, consult
-   `@.claude/rules/human-in-the-loop.md` to decide whether to stop or
+   `@.claude/skills/tdd/human-in-the-loop.md` to decide whether to stop or
    continue
 
 ## Required Prompt Context for the Refactor Subagent
